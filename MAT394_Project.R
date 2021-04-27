@@ -2,14 +2,12 @@
 
 #importing libraries
 library(ggplot2)
-library(e1071)
 library(caret)
 library(cowplot)
 library(gridExtra)
 library(glmnet)
 library(mlbench)
-library(psych)
-library(pROC)
+library(corrplot)
 
 # Data loading and preprossesing
 fb2 <- read.csv(file = "FB.csv")
@@ -23,6 +21,7 @@ head(fb2,5)
 tail(fb2,5)
 sum(is.na(fb2)) #prints the number of null values
 cor(fb2[,2:7]) #Correlation matrix
+corrplot(cor(fb2[,2:7]),method = "color", order = "hclust")
 
 ggplot(data = fb2, mapping = aes(Date, Adj.Close)) + geom_point() +
   geom_line() + xlab("Date") + ylab("Adj.Close") + ggtitle("Facebook Stock Prices") 
@@ -30,7 +29,7 @@ ggplot(data = fb2, mapping = aes(Date, Adj.Close)) + geom_point() +
 
 
 
-#Split the data into train and test - use data before year 2019 as train data, and 2019 onwards as test data
+#Split the data into train and test - we used data before year 2019 as train data, and 2019 onwards as test data
 fb2_split <-  split(fb2, fb2$Date < as.Date("2019-02-02"))
 fb2_split$`FALSE`
 
@@ -68,7 +67,7 @@ print(plot_lm)
 # Custom Control Parameters
 custom <- trainControl(method = "repeatedcv",
                        number = 10 ,
-                       repeats = 5,
+                       repeats = 3,
                        verboseIter = T)
 #Train model
 set.seed(1234)
@@ -78,10 +77,11 @@ ridge <- train(Adj.Close ~ .,training, method = "glmnet",tuneGrid = expand.grid(
 rr_pred <- predict(ridge, newdata = test)
 
 #Comparing Actual vs Predicted Values
-B = cbind(test$Adj.Close[1:5],rr_pred[1:5])
+B = cbind(test$Adj.Close[1:5],rr_pred[1:5],deparse.level=1)
 newheaders <- c("Actual Values","Predicted Values")
 colnames(B) <- newheaders
 B
+
 #R Squared Value
 R2_rr = R2(rr_pred,test$Adj.Close)
 R2_rr
@@ -98,7 +98,8 @@ print(plot_rr)
 # KNN Model
 trControl <- trainControl(method = 'repeatedcv',
                           number = 10,
-                          repeats = 3)
+                          repeats = 1,
+                          verboseIter = T)
 #Train model
 set.seed(333)
 knn <- train(Adj.Close ~.,
